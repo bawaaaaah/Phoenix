@@ -17,17 +17,50 @@ PhoenixWindow {
     minimumWidth: 640;
     swapInterval: 0;
 
+    flags: "FramelessWindowHint";
+
     property string borderColor: "#0b0b0b";
 
-    Rectangle {
-        id: leftBorder;
+    Item {
         anchors {
             top: parent.top;
             left: parent.left;
             bottom: parent.bottom;
         }
-        width: 2;
-        color: borderColor;
+
+        width: 10;
+
+        MouseArea {
+            anchors.fill: parent;
+            enabled: true;
+            property int click_x: 1;
+            onPressed: {
+                click_x = mouse.x;
+            }
+
+            onPositionChanged: {
+
+
+                var w = root.width - (mouse.x - click_x);
+                if (w > root.minimumWidth) {
+                    root.x = root.x + (mouse.x - click_x);
+                    root.width = w;
+                }
+
+            }
+        }
+
+        Rectangle {
+            id: leftBorder;
+            anchors {
+                top: parent.top;
+                left: parent.left;
+                bottom: parent.bottom;
+            }
+            width: 2;
+            color: borderColor;
+        }
+
     }
 
     Rectangle {
@@ -65,11 +98,6 @@ PhoenixWindow {
         id: phoenixLibrary;
     }
 
-    MouseArea {
-        anchors.fill: parent;
-        enabled: settingsDropDown.visible;
-        onClicked: settingsDropDown.visible = false;
-    }
 
     Component {
         id: gameGrid;
@@ -95,10 +123,10 @@ PhoenixWindow {
     Settings {
         id: settings;
         category: "UI";
-        property alias windowX: root.x;
-        property alias windowY: root.y;
-        property alias windowWidth: root.width;
-        property alias windowHeight: root.height;
+        //property alias windowX: root.x;
+        //property alias windowY: root.y;
+        //property alias windowWidth: root.width;
+        //property alias windowHeight: root.height;
         property alias volumeLevel: gameView.volumeLevel;
     }
 
@@ -288,6 +316,7 @@ PhoenixWindow {
                 color: "#262626";
                 anchors {
                     left: parent.left;
+                    leftMargin: 5;
                     top: parent.top;
                     bottom: parent.bottom;
                 }

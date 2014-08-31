@@ -35,6 +35,23 @@ Rectangle {
         }
     }
 
+    MouseArea {
+        anchors.fill: parent;
+        enabled: true;
+        property int click_x: 1;
+        property int click_y: 1;
+        propagateComposedEvents: true;
+        onPressed: {
+            click_x = mouse.x;
+            click_y = mouse.y;
+        }
+
+        onPositionChanged: {
+            root.x = root.x + (mouse.x - click_x);
+            root.y = root.y + (mouse.y - click_y);
+        }
+    }
+
     gradient: Gradient {
         GradientStop {position: 0.0; color: "#2f2f2f";}
         GradientStop {position: 1.0; color: "#1b1b1b";}
