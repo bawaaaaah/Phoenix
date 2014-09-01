@@ -23,7 +23,6 @@ class AudioBuffer {
     }
 
     size_t size_impl(size_t head, size_t tail) const;
-    qreal deviation;
 
 public:
     AudioBuffer(size_t size = 4096*4);
