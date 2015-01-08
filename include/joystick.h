@@ -3,7 +3,15 @@
 #define JOYSTICK_H
 
 #include <memory>
+#ifdef __unix__
+
+#include <SDL2/SDL.h>
+
+#elif
+
 #include <SDL.h>
+
+#endif
 
 #include "inputdevice.h"
 #include "inputdevicemapping.h"
