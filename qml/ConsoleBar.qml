@@ -4,6 +4,16 @@ import QtQuick.Controls.Styles 1.1
 import QtGraphicalEffects 1.0
 
 Rectangle {
+
+    // The ConsoleBar is the vertical column on the left side of Phoenix.
+    // This component also includes the background color of the column.
+
+    // Inside of this component lives several ListView's for showing 'Collections'
+    // and the 'Library' information to the user. The user is also able to
+    // filter these sections from this component.
+
+    // Lastly, the progress bar that shows during game imports also lives in here.
+
     id: consoleBar;
     color: "#2b2b2b";
     height: 500;
@@ -11,16 +21,49 @@ Rectangle {
 
     property real progressValue: phoenixLibrary.progress;
     property string progressText: phoenixLibrary.label;
+    property alias list: consoleListView;
 
-    Rectangle {
+    // All of these 'xxxBord' types that are direct children of the ConsoleBar and are quick and simple
+    // hacks to get a black border around this area.
+    // I wouldn't call this a 'good' coding style to emulate... :X
+
+    Row {
         id: rightBord;
         anchors {
+            right: parent.right;
             top: parent.top;
             bottom: parent.bottom;
+
+        }
+
+        Rectangle {
+            anchors {
+                top: parent.top;
+                bottom: parent.bottom;
+            }
+            width: 1;
+            color: "#333131";
+        }
+
+        Rectangle {
+            anchors {
+                top: parent.top;
+                bottom: parent.bottom;
+            }
+            width: 1;
+            color: "#0b0b0b";
+        }
+    }
+
+    Rectangle {
+        id: bottomBorder;
+        anchors {
+            bottom: parent.bottom;
+            left: parent.left;
             right: parent.right;
         }
-        width: 1;
-        color: "#1a1a1a";
+        color: "#0b0b0b";
+        height: 1;
     }
 
     Row {
@@ -37,205 +80,408 @@ Rectangle {
                 bottom: parent.bottom;
             }
             width: 1;
-            color: root.borderColor;
+            color: "#0b0b0b";
         }
 
-        //Rectangle {
-        //    anchors {
-         //       top: parent.top;
-        //        bottom: parent.bottom;
-         //   }
-        //    width: 1;
-         //   color: "#191919";
-        //}
+        Rectangle {
+            anchors {
+                top: parent.top;
+                bottom: parent.bottom;
+                bottomMargin: 1;
+            }
+            width: 1;
+            color: "#333131";
+        }
     }
 
     Rectangle {
-        id: consoleHeader;
-        height: 36;
-        color: parent.color;
-        z: listView.z + 1;
+        id: sections;
         anchors {
-            top: parent.top;
-            //topMargin: 12;
             left: parent.left;
             right: parent.right;
-            rightMargin: 1;
+            top: parent.top;
+            leftMargin: 2;
+            rightMargin: 2;
+            topMargin: 2;
         }
+        z: consoleScrollView.z + 1;
+        color: "#2e2c2c";
+        height: 30;
 
-        MouseArea {
-            id: mouse;
-            anchors.fill: parent;
-            onClicked: {
-                if (listView.retractList)
-                    listView.retractList = false;
-                else
-                    listView.retractList = true;
-            }
-
-        }
-
-
-
-        Row {
+        ListView {
+            id: sectionsListView;
             anchors {
+                fill: parent;
+                leftMargin: 16;
+            }
+            highlight: Item {
+                anchors {
+                    fill: sectionsListView.currentItem;
+                }
+                Rectangle {
+                    anchors.centerIn: parent;
+                    height: 21;
+                    width: sectionsListView.currentItem.width;
+                    gradient: Gradient {
+                        GradientStop {position: 0.0; color: "transparent";}
+                        GradientStop {position: 1.0; color: "#3b3a3a";}
+                    }
+                    radius: 6;
+
+                    Rectangle {
+                        anchors {
+                            fill: parent;
+                           topMargin: 0;
+                           bottomMargin: 1;
+                        }
+
+                        color: "#1b1a1a";
+                        radius: parent.radius;
+
+                        Rectangle {
+                            anchors {
+                                fill: parent;
+                                margins: 1;
+                            }
+
+                            radius: parent.radius;
+                            color: "#292727";
+                            //x: sectionsListView.currentItem.width / 2;
+                            //y: sectionsListView.currentItem.height / 2;
+                            //opacity: 0.1;
+                        }
+                    }
+                }
+            }
+
+            highlightFollowsCurrentItem: false;
+            interactive: false;
+            orientation: ListView.Horizontal;
+            spacing: 6;
+            model: ListModel {
+                ListElement {section: "Library"; modelType: "library";}
+                ListElement {section: "Collections"; modelType: "collections";}
+            }
+            delegate: Item {
+                anchors {
+                    top: parent.top;
+                    bottom: parent.bottom;
+                }
+                width: 80;
+
+                ShadowedText {
+                    text: section;
+                    anchors.centerIn: parent;
+                    pixelSize: 11;
+                    color: index == sectionsListView.currentIndex ? "#f1f1f1" : "#bfbfbf";
+                    MouseArea {
+                        anchors.fill: parent;
+                        onClicked: {
+                            sectionsListView.currentIndex = index;
+                            consoleListView.model = (modelType == "library") ? consoleListView.consoleModel : undefined;
+                        }
+                    }
+                }
+            }
+        }
+
+        Column {
+            anchors {
+                bottom: parent.bottom;
+                bottomMargin: -2;
                 left: parent.left;
-                top: parent.top;
-                topMargin: 12;
-                leftMargin: 12;
-                horizontalCenter: parent.horizontalCenter;
+                right: parent.right;
+                leftMargin: -1;
+                rightMargin: -1;
             }
-
-
-            Text {
-                renderType: Text.QtRendering;
-                text: "Consoles";
-                color: "#f1f1f1";
-                font {
-                    bold: true;
-                    family: "Sans";
-                    pixelSize: 13;
+            Rectangle {
+                height: 1;
+                anchors {
+                    left: parent.left;
+                    right: parent.right;
                 }
+                opacity: 0.07;
+                color: "white";
             }
-            Image {
-                y: 2;
-                source: "../assets/arrow-down-b.png";
-                fillMode: Image.PreserveAspectFit;
-                height: 14;
-                width: 20;
-                sourceSize {
-                    width: 25;
-                    height: 25;
+            Rectangle {
+                height: 1;
+                anchors {
+                    left: parent.left;
+                    right: parent.right;
                 }
+                opacity: 0.5;
+                color: "black";
+            }
+            Rectangle {
+                height: 1;
+                anchors {
+                    left: parent.left;
+                    right: parent.right;
+                }
+                opacity: 0.3;
+                color: "black";
             }
         }
     }
 
-    ListView {
-        id: listView;
-        visible: (height !== 0);
+    PhoenixScrollView {
+        id: consoleScrollView;
         anchors {
-            top: consoleHeader.bottom;
-            //bottom: parent.bottom;
+            top: sections.bottom;
+            topMargin: 1;
+            bottom: parent.bottom;
             right: parent.right;
             left: parent.left;
-            topMargin: 0;
+            rightMargin: 2;
+            leftMargin: 2;
+            bottomMargin: 2;
         }
 
-        height: retractList ? 0 : 500;
+        ListView {
+            id: consoleListView;
+            focus: root.consoleBarFocus;
 
-        Behavior on height {
-            PropertyAnimation {}
-        }
-
-        snapMode: ListView.SnapToItem;
-        orientation: ListView.Vertical;
-        interactive: true;
-        highlightFollowsCurrentItem: false;
-
-        property bool retractList: false;
-
-        highlight: Rectangle {
-            id: highlightItem;
-            visible: !listView.retractList;
-            height: listView.currentItem.height;
-            width: listView.width;
-            anchors.verticalCenter: listView.currentItem.verticalCenter;
-            y: listView.currentItem.y;
-            gradient: Gradient {
-                GradientStop {position: 0.0; color: "#0b0b0b";}
-                GradientStop {position: 0.05; color: "#1a1a1a";}
-                GradientStop {position: 1.0; color: "#1a1a1a";}
+            Behavior on height {
+                PropertyAnimation {}
             }
-            Rectangle {
-                anchors {
-                    left: parent.left;
-                    top: parent.top;
-                    bottom: parent.bottom;
-                    topMargin: 2;
-                    leftMargin: 2;
-                    bottomMargin: 2;
 
+            keyNavigationWraps: true;
+            snapMode: ListView.SnapToItem;
+            orientation: ListView.Vertical;
+            interactive: false;
+            highlightFollowsCurrentItem: true;
+
+            property bool retractList: false;
+
+            property ListModel consoleModel: ListModel {
+                ListElement {system: "All"; icon: "";}
+                ListElement {system: "Atari Lynx"; icon: "../assets/consoleicons/lynx.png";}
+                ListElement {system: "Arcade"; icon: "../assets/consoleicons/arcade.png";}
+                ListElement {system: "DOS"; icon: "../assets/consoleicons/dosbox.png";}
+                ListElement {system: "Nintendo"; icon: "../assets/consoleicons/nes.png";}
+                ListElement {system: "Super Nintendo"; icon: "../assets/consoleicons/snes.png";}
+                ListElement {system: "Game Boy"; icon: "../assets/consoleicons/gbc.png";}
+                ListElement {system: "Game Boy Advance"; icon: "../assets/consoleicons/gba.png";}
+                ListElement {system: "Nintendo DS"; icon: "../assets/consoleicons/nds.png";}
+                ListElement {system: "Sega Game Gear"; icon: "../assets/consoleicons/gamegear.png";}
+                ListElement {system: "Sega Master System"; icon: "../assets/consoleicons/sms.png";}
+                ListElement {system: "Sega Mega Drive"; icon: "../assets/consoleicons/megadrive.png";}
+                ListElement {system: "Sega CD"; icon: "../assets/consoleicons/sega-cd.png";}
+                ListElement {system: "Sega 32x"; icon: "../assets/consoleicons/sega32x.png";}
+                ListElement {system: "Sony PlayStation"; icon: "../assets/consoleicons/ps1.png";}
+            }
+
+            model: consoleModel;
+
+            Keys.forwardTo: headerBar.textField;
+            Keys.priority: Keys.BeforeItem;
+            Keys.onPressed: {
+                switch (event.key) {
+                    case Qt.Key_Right:
+                    //case Qt.Key_Tab:
+                        root.keyBoardFocus = 2;
+                        event.accepted = true;
+                        break;
+                    case Qt.Key_Down:
+                        consoleListView.incrementCurrentIndex();
+                        event.accepted = true;
+                        break;
+                    case Qt.Key_Up:
+                        consoleListView.decrementCurrentIndex();
+                        event.accepted = true;
+                        break;
+
+                    default:
+                        break;
                 }
-                width: 4;
+            }
+
+            highlight: Rectangle {
+                id: highlightItem;
+                visible: !consoleListView.retractList;
+                height: consoleListView.currentItem.height;
+                width: consoleListView.currentItem.width;
+                anchors.verticalCenter: consoleListView.currentItem.verticalCenter;
+                y: consoleListView.currentItem.y;
                 gradient: Gradient {
-                    GradientStop {position: 0.0; color: "#f06612";}
-                    GradientStop {position: 1.0; color: "#dc113b";}
+                    GradientStop {position: 0.0; color: "#0b0b0b";}
+                    GradientStop {position: 0.05; color: "#1a1a1a";}
+                    GradientStop {position: 0.95; color: "#1a1a1a";}
+                    GradientStop {position: 1.0; color: "#0b0b0b";}
                 }
 
                 CustomBorder {
+                    color: "#393737";
+                    shareMargin: false;
+                    _topMargin: 1;
+                    _bottomMargin: 1;
+                    _leftMargin: -1;
+                    _rightMargin: -1;
+                }
+
+                Desaturate {
+                        anchors.fill: source;
+                        visible: !coloredBar.visible;
+                        source: coloredBar;
+                        desaturation: 1.0
+                        cached: true;
+                    }
+
+                Rectangle {
+                    id: coloredBar;
+                    visible: root.consoleBarFocus;
+                    anchors {
+                        top: parent.top;
+                        bottom: parent.bottom;
+                        topMargin: 1;
+                        bottomMargin: 1;
+                        //left: parent.left;
+                        //leftMargin: 1;
+                        //right: parent.right;
+                        //rightMargin: 1;
+
+                    }
+                    x: parent.x + 1;
+
+                    Behavior on x {
+                        PropertyAnimation {
+                            duration: 100;
+                        }
+                    }
+
+                    width: 8;
                     gradient: Gradient {
-                        GradientStop {position: 0.0; color: "#ff944a";}
-                        GradientStop {position: 1.0; color: "#ef516c";}
+                        GradientStop {color: "#ee5e16"; position: 0.0}
+                        GradientStop {color: "#de1937"; position: 1.0}
                     }
+
+                    Rectangle {
+                        id: topAccent;
+                        anchors {
+                            top: parent.top;
+                            left: parent.left;
+                            right: parent.right;
+                        }
+                        color: "white";
+                        opacity: 0.3;
+                        height: 1;
+                    }
+
+                    Rectangle {
+                        id: bottomAccent;
+                        anchors {
+                            bottom: parent.bottom;
+                            left: parent.left;
+                            right: parent.right;
+                        }
+                        color: "white";
+                        opacity: 0.15;
+                        height: 1;
+                    }
+
+                    Rectangle {
+                        id: leftAccent;
+                        anchors {
+                            bottom: bottomAccent.top;
+                            top: topAccent.bottom;
+                            left: parent.left;
+                        }
+                        color: "white";
+                        opacity: 0.20;
+                        width: 1;
+                    }
+
+                    Rectangle {
+                        id: rightAccent;
+                        anchors {
+                            bottom: bottomAccent.top;
+                            top: topAccent.bottom;
+                            right: parent.right;
+                        }
+                        color: "white";
+                        opacity: 0.20;
+                        width: 1;
+                    }
+                }
+
+            }
+
+            onCurrentIndexChanged: {
+                if (currentItem.text === "All") {
+                    phoenixLibrary.model().setFilter("title LIKE ?", ['%%'])
+                }
+                else {
+                    phoenixLibrary.model().setFilter("system = ?", [currentItem.text]);
                 }
             }
 
-
-        }
-
-        anchors {
-            right: parent.right;
-            left: parent.left;
-            top: consoleLabel.bottom;
-            topMargin: 10;
-        }
-
-        model: phoenixLibrary.systemsModel();
-
-        ExclusiveGroup {
-            id: consoleGroup
-        }
-
-        delegate: Item {
-            //visible: !listView.retractList;
-            height: 26;
-            width: consoleBar.width;
-            Row {
-                id: row;
-                anchors {
-                    fill: parent;
-                    leftMargin: 25;
-                }
-                spacing: 7;
-
-                Image {
-                    anchors.verticalCenter: parent.verticalCenter;
-                    source: phoenixLibrary.systemIcon(modelData);
-                    fillMode: Image.PreserveAspectFit;
-                    sourceSize {
-                        height: 24;
-                        width: 24;
-                    }
-                    height: 20;
-                    width: 20;
-                }
-
-                Text {
-                    id: consoleItem;
-                    anchors.verticalCenter: parent.verticalCenter;
-                    width: 140;
-                    text: modelData;
-                    color: "#f1f1f1";
-                    renderType: Text.QtRendering;
-                    elide: Text.ElideRight;
-                    font {
-                        family: "Sans";
-                        pixelSize: 11;
-                        bold: true;
-                    }
-                }
+            ExclusiveGroup {
+                id: consoleGroup
             }
 
-            MouseArea {
-                anchors.fill: parent;
-                onClicked: {
-                    listView.currentIndex = index;
-                    if (modelData === "All") {
-                        phoenixLibrary.model().setFilter("title LIKE ?", ['%%'])
+
+
+            delegate: Item {
+                id: item;
+                //visible: !consoleListView.retractList;
+                height: 26;
+                width: consoleBar.width;
+                property string text: system;
+                Row {
+                    id: row;
+                    anchors {
+                        fill: parent;
+                        leftMargin: 25;
                     }
-                    else {
-                        phoenixLibrary.model().setFilter("system = ?", [modelData]);
+                    spacing: 8;
+
+                    Item {
+                        height: 21;
+                        width: 21;
+                        anchors.verticalCenter: parent.verticalCenter;
+
+                        DropShadow {
+                            anchors.fill: source;
+                            source: iconImage;
+                            color: "white";
+                            opacity: 0.15;
+                            verticalOffset: 1;
+                            horizontalOffset: 0;
+                            radius: 1;
+                            samples: radius * 2;
+                        }
+
+                        Image {
+                            id: iconImage;
+                            anchors.centerIn: parent;
+                            source: icon;
+                            fillMode: Image.PreserveAspectFit;
+                        }
+                    }
+
+                    Text {
+                        id: consoleItem;
+                        anchors.verticalCenter: parent.verticalCenter;
+                        width: item.width * 0.6;
+                        height: 22//item.height;
+                        elide: Text.ElideRight;
+                        font {
+                            bold: index == consoleListView.currentIndex//enableGradient;
+                            pointSize: 8;
+                        }
+                        verticalAlignment: Image.AlignVCenter;
+                        text: system;
+                        color: "#f1f1f1";
+
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent;
+                    onClicked: {
+                        if (root.keyBoardFocus === 2)
+                            root.keyBoardFocus = 1;
+                        consoleListView.currentIndex = index;
                     }
                 }
             }
@@ -244,7 +490,7 @@ Rectangle {
 
     Text {
         id: favorites;
-        z: listView.z + 1;
+        z: consoleScrollView.z + 1;
         //text: "Favorites";
         renderType: Text.QtRendering;
 
@@ -258,7 +504,7 @@ Rectangle {
         anchors {
             left: parent.left;
             leftMargin: 25;
-            top: listView.bottom;
+            top: consoleScrollView.bottom;
             topMargin: 40;
         }
     }
@@ -365,6 +611,10 @@ Rectangle {
         }
 
         Column {
+
+            // This is the progress area that shows up when you import
+            // and scrape info for games.
+
             spacing: 4;
             anchors {
                 verticalCenterOffset: 0;
@@ -375,12 +625,13 @@ Rectangle {
                 //top: parent.top;
                 //topMargin: 15;
             //}
-            Label {
+            Text {
                 anchors.horizontalCenter: parent.horizontalCenter;
                 text: consoleBar.progressText;
                 font {
                     bold: true;
                     pixelSize: 14;
+                    family: "Sans";
                 }
 
                 color: "#f1f1f1";

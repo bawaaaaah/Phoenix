@@ -4,6 +4,10 @@ import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.2
 
 Item {
+    id: inputSettings;
+    property var currentMapping;
+    property var currentDevice;
+    property int currentPort: 0;
 
     Column {
         anchors {
@@ -77,37 +81,65 @@ Item {
                 ListView {
                     id: listView;
 
-                    property var curMapping;
-                    property var curDevice;
-
                     z: 1;
                     anchors.centerIn: parent;
                     orientation: ListView.Horizontal;
                     width: (spacing !== 0) ? currentItem.width * count * spacing: currentItem.width * count;
                     height: currentItem.height;
+                    interactive: false;
 
-                    model: ListModel {
-                        ListElement {player: "Player 1"; selected: true; curvature: 3;}
-                        ListElement {player: "Player 2"; selected: false; curvature: 0;}
-                        ListElement {player: "Player 3"; selected: false; curvature: 0;}
-                        ListElement {player: "Player 4"; selected: false; curvature: 3;}
+                    Component.onCompleted: updateDevices();
+
+                    model: inputmanager.enumerateDevices();
+                    /* ListModel {
+                        ListElement {player: "Player 1"; selected: true; curvature: 3; port: 0}
+                        ListElement {player: "Player 2"; selected: false; curvature: 0; port: 1}
+                        ListElement {player: "Player 3"; selected: false; curvature: 0; port: 2}
+                        ListElement {player: "Player 4"; selected: false; curvature: 3; port: 3}
+                    }*/
+
+                    function updateDevices()
+                    {
+                        inputSettings.currentDevice = inputmanager.getDevice(currentIndex);
+                        inputSettings.currentMapping = inputSettings.currentDevice.mapping();
+                        inputSettings.currentPort = currentIndex;
                     }
+
+                    currentIndex: 0;
+
                     onCurrentIndexChanged: {
-                        inputMapper.deviceIndex = currentIndex;
-                        curMapping = inputmanager.mappingForPort(currentIndex);
-                        curDevice = inputmanager.getDevice(currentIndex);
+                        if (inputmanager.count > 0 && currentIndex < inputmanager.count) {
+                            if (currentIndex > 0 && inputSettings.currentDevice !== undefined)
+                                inputSettings.currentDevice.inputEventReceived.disconnect(gridView.currentItem.keyReceived);
+                            listView.updateDevices();
+                        }
                     }
-                    delegate: PhoenixNormalButton {
-                        property bool innerItem: (curvature == 0);
 
-                        text: player;
+
+
+                    Connections {
+                        target: inputmanager;
+                        onCountChanged: {
+                            inputmanager.updateModel();
+                            listView.updateDevices();
+                        }
+                    }
+
+                    delegate: PhoenixNormalButton {
+                        property bool innerItem: false;
+                        property string type: listView.model[index]["name"];
+                        text: type == "GamePad" ? "GamePad " + index : type;
                         z: innerItem ? listView.z + 1 : listView.z;
                         radius: 0;
-                        implicitWidth: 70;
+                        implicitWidth: 200;
                         checkable: true;
-                        checked: selected;
+                        checked: ListView.isCurrentItem;
                         exclusiveGroup: topButtonGroup;
 
+                        MouseArea {
+                            anchors.fill: parent;
+                            onClicked: listView.currentIndex = index;
+                        }
 
                     }
                 }
@@ -123,24 +155,16 @@ Item {
 
             spacing: 15;
 
-            ComboBox {
-                id: devicesBox;
-                width: 125;
-                model: inputmanager.enumerateDevices();
-                onCurrentIndexChanged: {
-                    //listView.curDevice = inputmanager.getDevice(currentIndex);
-                }
-
-            }
-
             PhoenixNormalButton {
                 text: "Configure All";
                 implicitWidth: 100;
                 onClicked: {
-                    gridView.currentIndex = 0;
-                    inputMapper.walkthroughCount = 0;
-                    inputMapper.setupWalkthrough = false;
-                    inputMapper.setupWalkthrough = true;
+                    if (inputmanager.count > 0) {
+                        gridView.currentIndex = 0;
+                        inputMapper.walkthroughCount = 0;
+                        inputMapper.setupWalkthrough = false;
+                        inputMapper.setupWalkthrough = true;
+                    }
                 }
             }
         }
@@ -171,9 +195,7 @@ Item {
 
             ScrollView {
                 id: inputMapper;
-                property var mapping: listView.curMapping;
-                property alias device: listView.curDevice;
-                property int deviceIndex: 0;
+
                 //visible: stackView.width > width;
                 property bool waitingUpdate: false;
                 property bool setupWalkthrough: false;
@@ -195,40 +217,58 @@ Item {
                     cellWidth: 175;
                     flow: GridView.TopToBottom;
                     model: ListModel {
-                        id: buttonsModel;
-                        ListElement {controllerButton: "Up"; retroId: "4"; updating: false;}
-                        ListElement {controllerButton: "Down"; retroId: "5"; updating: false;}
-                        ListElement {controllerButton: "Left"; retroId: "6"; updating: false;}
-                        ListElement {controllerButton: "Right"; retroId: "7"; updating: false;}
-                        ListElement {controllerButton: "Select"; retroId: "2"; updating: false;}
-                        ListElement {controllerButton: "Start"; retroId: "3"; updating: false;}
-                        ListElement {controllerButton: "A"; retroId: "8"; updating: false;}
-                        ListElement {controllerButton: "B"; retroId: "0"; updating: false;}
-                        ListElement {controllerButton: "X"; retroId: "9"; updating: false;}
-                        ListElement {controllerButton: "Y"; retroId: "1"; updating: false;}
-                        ListElement {controllerButton: "R"; retroId: "11"; updating: false;}
-                        ListElement {controllerButton: "L"; retroId: "10"; updating: false;}
-                        ListElement {controllerButton: "RB"; retroId: "13"; updating: false;}
-                        ListElement {controllerButton: "LB"; retroId: "12"; updating: false;}
-                        ListElement {controllerButton: "R3"; retroId: "15"; updating: false;}
-                        ListElement {controllerButton: "L3"; retroId: "14"; updating: false;}
+                        ListElement {retroId: 8; button: "A";}
+                        ListElement {retroId: 0; button: "B";}
+                        ListElement {retroId: 9; button: "X";}
+                        ListElement {retroId: 1; button: "Y";}
+                        ListElement {retroId: 2; button: "Select";}
+                        ListElement {retroId: 3; button: "Start";}
+                        ListElement {retroId: 4; button: "Up";}
+                        ListElement {retroId: 5; button: "Down";}
+                        ListElement {retroId: 6; button: "Left";}
+                        ListElement {retroId: 7; button: "Right";}
+                        ListElement {retroId: 10; button: "L";}
+                        ListElement {retroId: 11; button: "R";}
+                        ListElement {retroId: 12; button: "L2";}
+                        ListElement {retroId: 13; button: "R2";}
+                        ListElement {retroId: 14; button: "L3";}
+                        ListElement {retroId: 15; button: "R3";}
                     }
+
+                    Timer {
+                        id: textFieldTimer;
+                        interval: 500;
+                        onTriggered: gridView.currentItem.buttonField.state = "waiting";
+                    }
+
+                    function nullTest(data)
+                    {
+                        return data === null;
+                    }
+
 
                     delegate: Item {
                         id: gridItem;
                         height: 30;
                         width: 225;
                         property bool overrideFocus: false;
+                        property alias buttonField: textField;
+                        property string event: inputSettings.currentMapping.getMappingByRetroId(retroId);
 
                         function keyReceived(ev, value) {
                             if (value) {
-                                var prevBinding = inputMapper.mapping.getMappingByRetroId(retroId);
-                                console.log("RECEIVED event: " + ev + " and value: " + value);
-                                inputMapper.mapping.remapMapping(prevBinding, ev, retroId, inputMapper.deviceIndex);
+                                var event = inputmanager.variantToString(ev);
+                                if (!inputSettings.currentMapping.remap(ev, retroId, inputSettings.currentPort)) {
+                                    textField.state = "collision";
+                                    textFieldTimer.start();
+                                    return;
+                                }
+
                                 inputMapper.waitingUpdate = false;
-                                buttonsModel.get(index).updating = false;
-                                console.log("New binding: " + inputMapper.mapping.getMappingByRetroId(retroId));
-                                inputMapper.device.inputEventReceived.disconnect(keyReceived);
+                                inputSettings.currentDevice.inputEventReceived.disconnect(keyReceived);
+
+                                gridItem.event = event;
+                                textField.state = "normal";
 
                                 if (inputMapper.setupWalkthrough) {
                                     inputMapper.walkthroughCount += 1;
@@ -244,13 +284,15 @@ Item {
                         function startUpdate() {
                             if (inputMapper.waitingUpdate)
                                 return;
+
                             inputMapper.waitingUpdate = true;
-                            buttonsModel.get(index).updating = true;
-                            console.log("Changing mapping for " + controllerButton + " on device: " + inputMapper.device.deviceName());
-                            inputMapper.device.inputEventReceived.connect(gridItem.keyReceived);
+
+                            textField.state = "waiting";
+
+
+                            console.log("Changing mapping for " + gridItem.event + " on device: " + inputSettings.currentDevice.deviceName());
+                            inputSettings.currentDevice.inputEventReceived.connect(gridItem.keyReceived);
                         }
-
-
 
                         onOverrideFocusChanged: {
                             if (overrideFocus) {
@@ -260,9 +302,9 @@ Item {
 
                         Text {
                             renderType: Text.QtRendering;
-                            text: controllerButton + ":";
+                            text: button;
                             anchors {
-                                right: buttonField.left;
+                                right: textField.left;
                                 verticalCenter: parent.verticalCenter;
                                 rightMargin: 15;
                             }
@@ -277,34 +319,95 @@ Item {
                         }
 
                         PhoenixTextField {
-                            id: buttonField;
+                            id: textField;
                             readOnly: true;
                             width: 100;
                             height: 25;
                             radius: 3;
-                            borderColor: "black";
                             renderType: Text.QtRendering;
                             textColor: "#f1f1f1";
-                            text: updating ? "WAITING" : inputMapper.mapping.getMappingByRetroId(retroId) ;
+                            text: gridItem.event;
+                            horizontalAlignment: Text.AlignHCenter;
+
                             anchors {
                                 verticalCenter: parent.verticalCenter;
                                 right: parent.right;
                                 rightMargin: 50;
                             }
 
-                            horizontalAlignment: Text.AlignHCenter;
                             font {
                                 family: "Sans";
                                 pixelSize: 11;
                             }
 
+                            Component.onCompleted: state = "normal";
+
+                            states: [
+                                State {
+                                    name: "collision";
+                                    PropertyChanges {
+                                        target: textField;
+                                        borderWidth: 4;
+                                        borderColor: "red";
+                                    }
+                                },
+
+                                State {
+                                    name: "waiting";
+                                    PropertyChanges {
+                                        target: textField;
+                                        borderWidth: 4;
+                                        borderColor: "blue";
+                                    }
+                                },
+
+                                State {
+                                    name: "normal";
+                                    PropertyChanges {
+                                        target: textField;
+                                        borderWidth: 1;
+                                        borderColor: "black";
+                                    }
+
+                                }
+
+                            ]
+
+                            transitions: [
+                                Transition {
+                                    from: "normal";
+                                    to: "waiting";
+
+                                        NumberAnimation {
+                                            properties: "borderWidth";
+                                            easing.type: Easing.InBack;
+                                            duration: 200;
+                                        }
+
+                                },
+                                Transition {
+                                    from: "waiting";
+                                    to: "normal";
+                                        NumberAnimation {
+                                            properties: "borderWidth";
+                                            easing.type: Easing.Linear;
+                                            duration: 10;
+                                        }
+                                }
+
+                            ]
+
                             MouseArea {
                                 id: buttonMouseArea;
                                 anchors.fill: parent;
                                 onClicked: {
+                                    if (textFieldTimer.running)
+                                        textFieldTimer.stop();
+                                    console.log("shoudl update");
+                                    gridView.currentIndex = index;
                                     gridItem.startUpdate();
                                 }
-                                    //inputMapper.device.inputEventReceived.disconnect(buttonMouseArea.keyReceived);
+                                    //inputSettings.currentDevice.inputEventReceived.disconnect(buttonMouseArea.keyReceived);
                             }
                         }
                     }

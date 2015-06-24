@@ -2,58 +2,85 @@
 TEMPLATE = app
 TARGET = phoenix
 INCLUDEPATH += ./include
-CONFIG += debug console c++11
-
+CONFIG += c++11
 QT += widgets core gui multimedia qml quick sql concurrent
 
 VERSION = 0.1
 
 DEFINES += '"PHOENIX_VERSION=\\"$$VERSION\\""'
 
-!macx {
-    LIBS += -lSDL2
-}
-else {
-    LIBS += -framework SDL2
-}
+LIBS += -lsamplerate -lSDL2
 
 linux-g++ {
-    INCLUDEPATH += /usr/include/SDL2/
+
+    INCLUDEPATH += /usr/include/ /usr/include/SDL2
     QMAKE_CXXFLAGS_RELEASE = -D_FORTIFY_SOURCE=2
 
-    # GCC >= 4.9
-    system(g++ --version | grep -E -q -e '"4\.(9|[0-9]{2})"') {
+    # GCC >= 4.9s
+    system( g++ --version | grep -E -q -e '"4\.(9|[0-9]{2})"' ) {
         QMAKE_CXXFLAGS += -fstack-protector-strong
         QMAKE_CXXFLAGS_DEBUG += -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer
         QMAKE_LFLAGS_DEBUG += -fsanitize=undefined -fsanitize=address
     }
+
+    CONFIG( debug, debug|release )  {
+        depends.path = $$OUT_PWD/debug
+        depends.files += $${PWD}/databases/systemdatabase.db
+    }
+
+    CONFIG(release, debug|release) {
+        depends.path = $$OUT_PWD/release
+        depends.files += $${PWD}/databases/systemdatabase.db
+    }
+
+    INSTALLS += depends
+
 }
 
 macx {
-    INCLUDEPATH += /Library/Frameworks/SDL2.framework/Headers
-    QMAKE_CXXFLAGS += -F/Library/Frameworks
-    QMAKE_LFLAGS += -F/Library/Frameworks
+
+    # Homebrew (OS X)
+    exists( /usr/local/include ) {
+        INCLUDEPATH += /usr/local/include /usr/local/include/SDL2
+        QMAKE_LFLAGS += -L/usr/local/lib
+    }
+
+    # MacPorts (OS X)
+    exists( /opt/local/include ) {
+        INCLUDEPATH += /opt/local/include /opt/local/include/SDL2
+        QMAKE_LFLAGS += -L/opt/local/lib
+    }
+
+
+
 }
 
 win32 {
-    QT +=  winextras gui-private
-    LIBS += -LC:/SDL2/lib
-    LIBS += -lmingw32 -lSDL2main -lSDL2
-    LIBS += -lgdi32 -ldwmapi
 
+    CONFIG -= windows
+    QMAKE_LFLAGS += $$QMAKE_LFLAGS_WINDOWS
+
+    LIBS += -LC:/SDL2/lib
+    LIBS += -lmingw32 -lSDL2main -lSDL2 -lm -ldinput8 -ldxguid -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lversion -luuid
 
     DEFINES += SDL_WIN
-    INCLUDEPATH += C:/SDL2/include
+    INCLUDEPATH += C:/SDL2/include C:/msys64/mingw64/include/SDL2 C:/msys64/mingw32/include/SDL2
 
-    #CONFIG(debug) {
-    #    QMAKE_POST_LINK += $$QMAKE_COPY $${PWD}\\databases/systemdatabase.db $${OUT_PWD}\\debug $$escape_expand(\\n\\t)
-    #    QMAKE_POST_LINK += $$QMAKE_COPY C:/SDL2/lib/SDL2.dll $${OUT_PWD}\\debug $$escape_expand(\\n\\t)
-    #}
 
-    #CONFIG(release) {
-    #    QMAKE_POST_LINK += $$QMAKE_COPY $${PWD}\\databases/systemdatabase.db $${OUT_PWD}\\release $$escape_expand(\\n\\t)
-    #    QMAKE_POST_LINK += $$QMAKE_COPY C:/SDL2/lib/SDL2.dll $${OUT_PWD}\\release $$escape_expand(\\n\\t)
-    #}
+    CONFIG(debug, debug|release)  {
+        depends.path = $$OUT_PWD/debug
+        depends.files += C:/SDL2/bin/SDL2.dll \
+                            $${PWD}/databases/systemdatabase.db
+    }
+
+    CONFIG(release, debug|release) {
+        depends.path = $$OUT_PWD/release
+        depends.files += C:/SDL2/bin/SDL2.dll \
+                            $${PWD}/databases/systemdatabase.db
+    }
+
+    INSTALLS += depends
+
 }
 
 HEADERS += include/core.h                      \
@@ -84,6 +111,10 @@ HEADERS += include/core.h                      \
            include/systemdatabase.h            \
            include/networkqueue.h              \
            include/scraper.h                   \
+           include/phoenixglobals.h            \
+           include/phoenixlibraryhelper.h      \
+           include/utilities.h                 \
+           include/usernotifications.h         \
 
 SOURCES += src/main.cpp                        \
            src/videoitem.cpp                   \
@@ -106,6 +137,15 @@ SOURCES += src/main.cpp                        \
            src/coremodel.cpp                   \
            src/systemdatabase.cpp              \
            src/networkqueue.cpp                \
-           src/scraper.cpp
+           src/scraper.cpp                     \
+           src/phoenixlibraryhelper.cpp        \
+           src/phoenixglobals.cpp              \
+           src/utilities.cpp                   \
+           src/usernotifications.cpp           \
 
 RESOURCES = qml/qml.qrc assets/assets.qrc
+
+DISTFILES += \
+    .astylerc
+
+RC_FILE += src/phoenix.rc

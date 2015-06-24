@@ -9,13 +9,20 @@ import QtQuick.Window 2.0
 
 
 Rectangle {
+
+    // This qml component is another one of the components
+    // that are managed by the 'gameStack'.
+
+    // This component isRunnings and shows the video frames from the libretro core onto
+    // the screen.
+
     id: gameView;
     width: 800;
     height: 600;
     visible: true;
     color: "black";
     property string stackName: "gameview";
-    property bool run: false;
+    property bool isRunning: false;
     property string gameName: "";
     property string coreName: "";
     property bool loadSaveState: false
@@ -24,14 +31,45 @@ Rectangle {
     property alias gameMouse: gameMouse;
     property string previousViewIcon: "";
 
+    function checkVisibility(visible)
+    {
+        if (visible) {
+            ranOnce = true;
+            timerEffects();
+            headerBar.sliderVisible = false;
+            headerBar.searchBarVisible = false;
+            prevView = headerBar.viewIcon;
+            headerBar.viewIcon = "../assets/GameView/home.png";
+        }
+        else {
+            headerBar.sliderVisible = true;
+            headerBar.searchBarVisible = true;
+            headerBar.timer.stop();
+            if (ranOnce)
+                headerBar.viewIcon = prevView;
+        }
+    }
+
     Component.onCompleted: {
         root.itemInView = "game";
         root.gameShowing = true;
-        inputmanager.attachDevices();
+        if (!inputmanager.findingDevices) {
+            inputmanager.attachDevices = true;
+        }
+        else {
+            inputmanager.countChanged.connect(inputmanager.handleAttachDevices);
+        }
+        checkVisibility(visible);
     }
+
+    onVisibleChanged: checkVisibility(visible);
+
     Component.onDestruction:  {
         root.gameShowing = false;
-        inputmanager.removeDevices();
+        if (!inputmanager.findDevices)
+            inputmanager.attachDevices = false;
+        else
+            inputmanager.countChanged.connect(inputmanager.removeDevices);
     }
 
     function timerEffects() {
@@ -57,60 +95,55 @@ Rectangle {
         }
     }
 
-
-    onVisibleChanged: {
-        if (visible) {
-            ranOnce = true;
-            timerEffects();
-            headerBar.sliderVisible = false;
-            headerBar.searchBarVisible = false;
-            prevView = headerBar.viewIcon;
-            headerBar.viewIcon = "../assets/GameView/home.png";
-        }
-        else {
-            headerBar.sliderVisible = true;
-            headerBar.searchBarVisible = true;
-            headerBar.timer.stop();
-            if (ranOnce)
-                headerBar.viewIcon = prevView;
-        }
-    }
-
     MouseArea {
         id: gameMouse;
-        anchors.fill: parent;
+        anchors {
+            fill: parent;
+            topMargin: headerBar.height;
+        }
+
         hoverEnabled: true
         onMouseXChanged: timerEffects();
         onMouseYChanged: timerEffects();
+
         onDoubleClicked: {
             root.swapScreenSize();
         }
     }
+/*
+   ShaderEffectSource {
+        id: shaderSource;
+        sourceItem: videoItem;
+        //anchors.fill: videoItem;
+        hideSource: true;
+    }*/
+
 
     VideoItem {
         id: videoItem;
+
+
         focus: true;
         anchors {
            centerIn: parent;
         }
 
+
         height: parent.height;
         width: stretchVideo ? parent.width : height * aspectRatio;
 
-        systemDirectory: root.systemDirectory;
-        saveDirectory: root.saveDirectory;
+        systemDirectory: phoenixGlobals.biosPath();
         libcore: gameView.coreName;
         game: gameView.gameName;
-        run: gameView.run;
+        isRunning: gameView.isRunning;
         volume: root.volumeLevel;
         filtering: root.filtering;
         stretchVideo: root.stretchVideo;
 
         //property real ratio: width / height;
-        //onRatioChanged: console.log(ratio)
 
         onRunChanged: {
-            if (run)
+            if (isRunning)
                 headerBar.playIcon = "/assets/GameView/pause.png";
             else
                 headerBar.playIcon = "/assets/GameView/play.png";

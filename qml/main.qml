@@ -11,6 +11,10 @@ import phoenix.library 1.0
 import QtQuick.Window 2.0
 
 PhoenixWindow {
+
+      // The PhoenixWindow type is the window that Phoenix resides in.
+      // Read phoenixwindow.h to find more info about this class.
+
     id: root;
     width: Screen.width / 2;
     height: Screen.height / 2;
@@ -20,14 +24,12 @@ PhoenixWindow {
     frameless: false;
     title: "Phoenix";
 
-    property string infoBarText: "";
     property bool clear: false//(phoenixLibrary.count === 0);
     property string accentColor:"#e8433f";
     property int lastWindowStyle: Window.Windowed;
     property string borderColor: "#0b0b0b";
     property string flagValue: "";
     property bool gameShowing: false;
-    property string systemDirectory: "";
     property string saveDirectory: "";
     property real volumeLevel: 1.0;
     property string prevView: "";
@@ -39,20 +41,42 @@ PhoenixWindow {
     property string lastGameName: "Phoenix";
     property string lastSystemName: "";
 
+    property int keyBoardFocus: 2;
+    property bool gridFocus: keyBoardFocus === 2;
+    property bool consoleBarFocus: keyBoardFocus === 1;
+
+    function playGame(title, system, filename, core)
+    {
+        // This function is used should be used to play a game.
+
+        if (root.gameAndCoreCheck(title, system, filename, core)) {
+            root.lastGameName = title;
+            root.lastSystemName = system;
+            headerBar.userText = title;
+        }
+    }
+
     function gameAndCoreCheck(title, system, file_name, core)
     {
-        if (core !== "" && file_name !== "") {
-            if (root.loadCore(core)) {
-                if (root.loadGame(file_name)) {
-                    infoBar.height = 0;
-                    windowStack.push({item: gameView, properties: {coreName: core, gameName: file_name, run: true}});
-                }
-                else
-                    root.infoBarText = title + " could not be loaded.";
-            }
-            else
-                root.infoBarText = system + " core could not be loaded.";
+        // This function is used to call the gameAndCoreCheck(), that is
+        // a slot defined in the PhoenixWindow class. This function is used
+        // to see if the  ?and core loads properly, before actual game data is shown on
+        // the screen. This is to hopefully, reduce the change of segment faults, because of
+        // incompatible cores.
+
+        // Please call playGame(), instead of this calling this function directly.
+
+        if (phoenixGlobals.validCore(core)) {
+            if (phoenixLibraryHelper.needsBios(core))
+                return false;
+
+            if (phoenixGlobals.validGame(file_name)) {
+                windowStack.push({item: gameView, properties: {coreName: core, gameName: file_name, isRunning: true, replace: true}});
+                return true;
+             }
         }
+
+        return false;
     }
 
     onGameShowingChanged: {
@@ -62,6 +86,8 @@ PhoenixWindow {
         }
         else {
             headerBar.viewIcon = headerBar.previousViewIcon;
+            if (root.visibility === Window.FullScreen)
+                root.visibility = root.lastWindowStyle;
         }
     }
 
@@ -71,6 +97,8 @@ PhoenixWindow {
 
 
     function swapScreenSize(){
+        // This function is used to set the PhoenixWindow's visibility and make sure
+        // that the proper visibility is set.
         if (root.visibility == Window.FullScreen)
             root.visibility = lastWindowStyle;
         else {
@@ -124,6 +152,9 @@ PhoenixWindow {
 
     Component {
         id: gameGrid;
+
+        // This is one of the components that the 'gameStack' is allowed to load.
+        // The GameGrid class lives in this component.
 
         Item {
             id: backdropGrid;
@@ -316,7 +347,12 @@ PhoenixWindow {
     }
 
     Component {
+
+        // This component is another one of the valid components that the 'gameStack'
+        // can load.
+
         id: gameTable;
+
         Item {
             id: backdropGrid;
             property string actionColor: "#e8433f";
@@ -486,6 +522,9 @@ PhoenixWindow {
     }
 
     Settings {
+
+        // This is the Settings type that is used to save and load U.I. information.
+
         id: settings;
         category: "UI";
         //property alias windowX: root.x;
@@ -516,16 +555,149 @@ PhoenixWindow {
         fontSize: 14;
     }
 
-    InfoBar {
-        id: infoBar;
+    DropShadow {
+        anchors.fill: source;
+        source: biosWarning;
+        color: "black";
+        transparentBorder: true;
+        verticalOffset: 1;
+        horizontalOffset: 0;
+        radius: 4;
+        samples: radius * 2;
+        visible: biosWarning.visible;
+    }
+
+    Rectangle {
+
+        // This Rectangle is the warning that shows up whenever a game is launched
+        // and it contains missing bios files. This type is complete and so,
+        // can and should, be work on. Also, this type should be moved into it's own
+        // .qml file. Maybe even rename the 'id' value of this type, so that it can accept any
+        // type of warning.
+
+        // Use the userNotifications Q_PROPERTIES in order to set and show useful information
+        // to the user.
+
+        id: biosWarning;
+        visible: userNotifications.biosNotification !== "";
         anchors {
-            left: parent.left;
-            right: parent.right;
             top: headerBar.bottom;
-            leftMargin: 1;
-            rightMargin: 1;
+            horizontalCenter: parent.horizontalCenter;
+            topMargin: 12;
         }
-        z: headerBar.z + 1;
+        border {
+            width: 1;
+            color: "#a42d45";
+        }
+
+        MouseArea {
+            anchors.fill: parent;
+            onClicked: parent.height = (parent.height == 28) ? 300 : 28;
+        }
+
+        Behavior on height {
+            PropertyAnimation {
+                duration: 200;
+
+            }
+        }
+
+        width: 250;
+        height: 28;
+        radius: 8;
+        gradient: Gradient {
+            GradientStop {position: 0.0; color: "#db3e5b";}
+            GradientStop {position: 1.0; color: "#db2346";}
+        }
+
+        Column {
+            anchors {
+                top: parent.top;
+                topMargin: 28;
+                left: parent.left;
+                right: parent.right;
+                leftMargin: 16;
+                rightMargin: 16;
+            }
+
+            Rectangle {
+                color: "black";
+                opacity: 0.25;
+                anchors {
+                    left: parent.left;
+                    right: parent.right;
+                }
+                height: 1;
+            }
+            Rectangle {
+                color: "white";
+                opacity: 0.25;
+                anchors {
+                    left: parent.left;
+                    right: parent.right;
+                }
+                height: 1;
+            }
+        }
+
+        Rectangle {
+            anchors {
+                left: parent.left;
+                top: parent.top;
+                leftMargin: 6;
+                topMargin: 5;
+            }
+            height: 19;
+            width: height;
+            radius: width / 2;
+            color: "black";
+            opacity: 0.2;
+
+            CustomBorder {
+                color: "white";
+                opacity: 0.8;
+            }
+
+            MouseArea {
+                anchors.fill: parent;
+                onClicked: {
+                    userNotifications.biosNotification = "";
+                    biosWarning.visible = false;
+                }
+            }
+        }
+
+        Text {
+            text: userNotifications.biosNotification;
+            anchors {
+                top: parent.top;
+                topMargin: 7;
+                horizontalCenter: parent.horizontalCenter;
+            }
+
+
+            color: "#f1f1f1";
+            font {
+                family: "Sans";
+                bold: true;
+                pixelSize: 12;
+            }
+        }
+
+        Rectangle {
+            radius: parent.radius;
+            anchors {
+                fill: parent;
+                margins: 1;
+            }
+
+            color: "transparent";
+            border {
+                width: 1;
+                color: "white"
+            }
+            opacity: 0.3;
+        }
     }
 
     SettingsDropDown {
@@ -541,46 +713,9 @@ PhoenixWindow {
         }
         height: 275;
         width: 125;
-
         stackBackgroundColor: "#2e2e2e";
         contentColor: "#f4f4f4";
         textColor: "#f1f1f1";
-
-        Rectangle {
-            visible: parent.visible;
-            height: 15;
-            width: 15;
-            rotation: 45;
-            color: "#2e2e2e";
-            z: settingsDropDown.z + 1;
-            anchors {
-                left: parent.left;
-                leftMargin: 17;
-                verticalCenter: settingsDropDown.top;
-            }
-
-            Rectangle {
-                anchors {
-                    top: parent.top;
-                    left: parent.left;
-                    leftMargin: 1;
-                    right: parent.right;
-                }
-                height: 1;
-                color: "#404040";
-            }
-
-            Rectangle {
-                anchors {
-                    top: parent.top;
-                    left: parent.left;
-                    bottom: parent.bottom;
-                }
-                width: 1;
-                color: "#404040";
-            }
-        }
-
     }
 
     RectangularGlow {
@@ -834,8 +969,6 @@ PhoenixWindow {
                     }
                     onExited:  backdropGrid.showBorder = false;
                 }
-
-
             }
 
             StackView {
@@ -854,6 +987,21 @@ PhoenixWindow {
                     right: parent.right;
                     top: parent.top;
                     bottom: parent.bottom;
+                }
+
+                InputIndicator {
+                    z: 100;
+                    id: inputIndicator;
+                    visible: false;
+                    anchors {
+                        left: parent.left;
+                        top: parent.top;
+                        topMargin: 12;
+                        leftMargin: 12;
+                    }
+
+                    height: 50;
+                    width: height;
                 }
 
             }

@@ -6,6 +6,11 @@ import QtGraphicalEffects 1.0
 import Qt.labs.settings 1.0
 
 Rectangle {
+
+    // The HeaderBar is the horizontal bar at the top of the phoenix window.
+    // In this type, you'll find the search bar for filtering games, the settings button,
+    // and various other buttons.
+
     id: headerBar;
     property string headerColor: "#404040";
     property int fontSize: 13;
@@ -21,11 +26,15 @@ Rectangle {
     property string systemText: "";
     property string previousViewIcon: "";
 
+    property alias textField: searchBar;
+
+    // Hide the header bar after (interval) ms
     property Timer timer: Timer {
-        interval: 4000;
+        interval: 1000;
         running: false;
 
         onTriggered: {
+            // TODO: Let the user configure this
             windowStack.currentItem.gameMouse.cursorShape = Qt.BlankCursor;
             headerBar.height = 0;
             if (volumeDropDown.visible) {
@@ -40,8 +49,9 @@ Rectangle {
         GradientStop {position: 1.0; color: "#1b1b1b";}
     }
 
+    // 4 thin borders that go around the edge of HeaderBar
     Column {
-        id: topBord;
+        id: topBorder;
         anchors {
             left: parent.left;
             right: parent.right;
@@ -69,7 +79,7 @@ Rectangle {
     }
 
     Row {
-        id: leftBord;
+        id: leftBorder;
         anchors {
             left: parent.left;
             top: parent.top;
@@ -99,10 +109,10 @@ Rectangle {
     }
 
     Row {
-        id: rightBord;
+        id: rightBorder;
         anchors {
             right: parent.right;
-            top: topBord.bottom;
+            top: topBorder.bottom;
             bottom: parent.bottom;
         }
 
@@ -128,7 +138,7 @@ Rectangle {
     }
 
     Column {
-        id: bottomBord;
+        id: bottomBorder;
         anchors {
             left: parent.left;
             right: parent.right;
@@ -158,19 +168,14 @@ Rectangle {
         }
     }
 
-    onHeightChanged: {
-        if (height == 0) {
-            visible = false;
-        }
-        else {
-            visible = true;
-        }
-    }
+    // TODO: Explain why this is done...?
+    onHeightChanged: visible = ( height != 0 );
 
     width: 300;
     height: 50;
     //color: headerColor;
 
+    // TODO: Explain what this is...?
     Rectangle {
         visible: volumeDropDown.visible;
         z: volumeDropDown.z + 1;
@@ -215,6 +220,7 @@ Rectangle {
         rotation: 45;
     }
 
+    // Floating volume dropdown, appears when volumeBtn is clicked
     Rectangle {
         id: volumeDropDown;
         gradient: Gradient {
@@ -360,6 +366,9 @@ Rectangle {
         }
     }
 
+    // A row of widgets that belong on the left
+    // Library view: Settings | Library view style (GameTable, GameGrid) | GameGrid grid size slider
+    // Game view: Home | Play/Pause | Volume control
     Row {
         id: leftButtonRow;
         anchors {
@@ -369,6 +378,9 @@ Rectangle {
         }
         spacing: 15;
 
+        // A clickable image with dual roles
+        // Library view: Settings
+        // Game view: Home
         Image {
             id: settingsBtn;
             source: !root.gameShowing ? "../assets/cog-6x.png" : "../assets/GameView/home.png";
@@ -386,7 +398,7 @@ Rectangle {
 
                 onClicked:  {
                     if (root.itemInView === "game") {
-                        windowStack.currentItem.run = false;
+                        windowStack.currentItem.isRunning = false;
                         volumeDropDown.visible = false;
                         windowStack.push({item: homeScreen, replace: true})
                         headerBar.userText = "Phoenix";
@@ -426,10 +438,10 @@ Rectangle {
 
             onPressedChanged:  {
                 if (pressed) {
-                    if (windowStack.currentItem.run)
-                        windowStack.currentItem.run = false;
+                    if (windowStack.currentItem.isRunning)
+                        windowStack.currentItem.isRunning = false;
                     else
-                        windowStack.currentItem.run = true;
+                        windowStack.currentItem.isRunning = true;
                 }
             }
         }
@@ -472,11 +484,9 @@ Rectangle {
             spacing: 12;
 
             Image {
-                source: "../assets/small-icon.png";
-                height: 6;
-                width: 6;
+                source: root.itemInView === "grid" ? "../assets/small-icon.png" : "../assets/small-icon-disabled.png";
                 sourceSize {
-                    height: 6;
+                    height: 7;
                     width: 6;
                 }
                 anchors {
@@ -486,13 +496,26 @@ Rectangle {
 
             Slider {
                 id: zoomSlider;
+                focus: false;
                 width: 120;
                 height: 25;
-
-                stepSize: 0.5;
-                minimumValue: 3.0;
+                stepSize: 0.01;
+                minimumValue: 1.0;
                 maximumValue: 5.0;
-                value: 5;
+                value: minimumValue;
+
+                MouseArea {
+                    enabled: root.itemInView !== "grid";
+                    anchors.fill: parent;
+                    hoverEnabled: true;
+                    propagateComposedEvents: false;
+                    onWheel: {
+
+                    }
+                    onClicked: {
+
+                    }
+                }
 
                 Settings {
                     category: "UI";
@@ -514,118 +537,79 @@ Rectangle {
                 }
 
                 style: SliderStyle {
-                    id: sliderStyle;
+                    handle: Rectangle {
+                        height: 15;
+                        width: 15;
+                        radius: width * 0.5;
 
-                    handle: Item {
-                        height: 24;
-                        width: 24;
-
-                        Rectangle {
-                            id: zoomHandle;
-                            gradient: Gradient {
-                                GradientStop{ position: 0.0; color: "#343434";}
-                                GradientStop{ position: 0.5; color: "#343433";}
-                                GradientStop{ position: 0.7; color: "#2c2d2c";}
-                                GradientStop{ position: 1.0; color: "#242424";}
-
-                            }
-
-                            radius: width * 0.5;
-                            anchors.centerIn: parent;
-                            height: 17;
-                            width: 17;
-
-                            CustomBorder {
-                                radius: parent.width / 2;
-                                gradient: Gradient {
-                                    GradientStop{ position: 0.0; color: "#595959";}
-                                    GradientStop{ position: 1.0; color: "black";}
-                                }
-                            }
-
-                            Rectangle {
-                                radius: width / 2;
-                                anchors {
-                                    centerIn: parent;
-                                }
-                                width: parent.width * 0.36;
-                                height: parent.height * 0.36;
-
-                                CustomBorder {
-                                    radius: parent.width / 2;
-                                    gradient: Gradient {
-                                        GradientStop{ position: 0.0; color: "black";}
-                                        GradientStop{ position: 1.0; color: "#595959";}
-                                    }
-
-                                }
-
-                                gradient: Gradient {
-                                    GradientStop{ position: 0.0; color: "#070707";}
-                                    GradientStop{ position: 1.0; color: "#222221";}
-                                }
-                            }
-
-                           //CustomBorder {
-                           //    color: "black"
-                            //}
+                        gradient: Gradient {
+                            GradientStop{ position: 0.0; color: "#343434";}
+                            GradientStop{ position: 0.5; color: "#343433";}
+                            GradientStop{ position: 0.7; color: "#2c2d2c";}
+                            GradientStop{ position: 1.0; color: "#242424";}
 
                         }
-                        /*DropShadow {
-                            source: zoomHandle;
-                            anchors.fill: source;
-                            horizontalOffset: 0;
-                            verticalOffset: 1;
-                            color: "black";
-                            opacity: 1.0;
-                            radius: 2;
-                            samples: radius * 2;
-
-                        }*/
-                    }
-
-                    groove: Rectangle {
-                        height: 5;
-                        width: zoomSlider.width;
-                        radius: 3;
-                        opacity: 0.8;
-                        color: "#1a1a1a";
-                        border {
-                            width: 1;
-                            color: "black";
-                        }
-
-                        /*Rectangle {
-                            color: "#f1f1f1";
-                            radius: parent.radius;
-                            anchors {
-                                top: parent.top;
-                                bottom: parent.bottom;
-                                left: parent.left;
-                                topMargin: 1;
-                                bottomMargin: 1;
-                                leftMargin: 1;
-                            }
-                            width: (zoomSlider.value >= 3.0) ? 10  * (zoomSlider.value * 2.0) : 6  * (zoomSlider.value * 2.0);
-                        }*/
 
                         CustomBorder {
+                            radius: parent.width / 2;
                             gradient: Gradient {
-                                GradientStop {position: 0.0; color: "#1a1a1a";}
-                                GradientStop {position: 0.95; color: "#4a4a4a";}
+                                GradientStop{ position: 0.0; color: "#595959";}
+                                GradientStop{ position: 1.0; color: "black";}
+                            }
+                        }
+                    }
+
+                    groove: Row {
+                        height: 7;
+                        width: zoomSlider.width;
+
+                        Rectangle {
+                            height: parent.height;
+                            width: styleData.handlePosition;
+                            radius: 3;
+                            opacity: 0.8;
+                            color: "#404040";
+
+                            border {
+                                width: 1;
+                                color: "black";
+                            }
+
+                            CustomBorder {
+                                gradient: Gradient {
+                                    GradientStop {position: 0.0; color: "#1a1a1a";}
+                                    GradientStop {position: 0.95; color: "#4a4a4a";}
+                                }
                             }
                         }
 
+                        Rectangle {
+                            height: parent.height;
+                            width: parent.width - styleData.handlePosition;
+                            radius: 3;
+                            opacity: 0.8;
+                            color: "#1a1a1a";
+
+                            border {
+                                width: 1;
+                                color: "black";
+                            }
+
+                            CustomBorder {
+                                gradient: Gradient {
+                                    GradientStop {position: 0.0; color: "#1a1a1a";}
+                                    GradientStop {position: 0.95; color: "#4a4a4a";}
+                                }
+                            }
+                        }
                     }
                 }
             }
             Image {
-                source: "../assets/big-icon.png";
-                height: 11;
-                width: 11;
+                source: root.itemInView === "grid" ? "../assets/big-icon.png" : "../assets/big-icon-disabled.png";
                 sourceSize {
-                    height: 11;
-                    width: 11;
+                    height: 10;
+                    width: 9;
                 }
                 anchors {
                     verticalCenter: parent.verticalCenter;
@@ -634,6 +618,9 @@ Rectangle {
         }
     }
 
+    // Info widget that appears in the center
+    // Library view: Just the word "Phoenix"
+    // Game view: The current game (title, system)
     Item {
         anchors {
             top: parent.top;
@@ -770,6 +757,8 @@ Rectangle {
 
     }
 
+    // A row of widgets that belong on the right
+    // Game view: Save | Load | Favorite | Fullscreen
     Row {
         spacing: 10;
         anchors {
@@ -847,11 +836,59 @@ Rectangle {
         }
     }
 
+    // The search bar
+    // Belongs on the far right
     PhoenixTextField {
         id: searchBar;
-        placeholderText: "Search";
-        placeholderTextColor: textColor;
+
+        CustomBorder {
+            id: customBorder;
+            _margin: 3;
+            border.color: "black";
+            visible: parent.text !== "";
+            gradient: Gradient {
+                GradientStop {position: 0.0; color: "#fa5e18";}
+                GradientStop {position: 1.0; color: "#ee2e2e";}
+            }
+        }
+
+        placeholderText: "Search Games...";
+        placeholderTextColor: "#808080";
         visible: !root.gameShowing;
+        property string carriedEvent: "";
+        onCarriedEventChanged: {
+            if (carriedEvent !== "")
+                text += carriedEvent.toLowerCase();
+            carriedEvent = "";
+        }
+
+        Keys.onPressed: {
+            switch (event.key) {
+                case Qt.Key_Tab:
+                    event.accepted = true;
+                    console.log("header tab pressed");
+                    if (root.keyBoardFocus == 1)
+                        root.keyBoardFocus = 2;
+                    else
+                        root.keyBoardFocus = 1;
+                    console.log(root.keyBoardFocus)
+                    break;
+                case Qt.Key_Backspace:
+                    if (text !== "")
+                        text = text.substring(0, text.length - 1);
+                    event.accepted = true;
+                    break;
+
+                default:
+                    var firstLetter = String.fromCharCode(event.key).charAt(0);
+                    if (firstLetter.match("^[a-zA-Z ]+$")) {
+                        insert(searchBar.length, String.fromCharCode(event.key).toLowerCase());
+                        event.accepted = true;
+                    }
+                    break;
+            }
+        }
+
         radius: 3;
         font {
             pixelSize: 12;
@@ -860,6 +897,7 @@ Rectangle {
         textColor: "#f1f1f1";
         height: 25;
         width: 175;
+        focus: false;
         anchors {
             right: parent.right;
             rightMargin: 20;
@@ -870,12 +908,12 @@ Rectangle {
             interval: 300;
             running: false;
             repeat: false;
-            onTriggered: phoenixLibrary.model().setFilter("title LIKE ?", ['%'+searchBar.text+'%']);
+            onTriggered: {
+                phoenixLibrary.model().setFilter("title LIKE ?", ['%'+searchBar.text+'%']);
+            }
         }
 
-        onTextChanged: {
-            searchTimer.restart();
-        }
+        onTextChanged: searchTimer.restart();
 
         Image {
             id: image;
@@ -884,13 +922,15 @@ Rectangle {
                 right: parent.right;
                 margins: 5;
             }
-            visible: (searchBar.displayText === "") ? false : true;
-            source: "../assets/delete-4x.png"
-            sourceSize.height: 15;
-            sourceSize.width: 15;
+            source: searchBar.text === "" ? "../assets/search.png" : "../assets/delete-4x.png";
+            sourceSize.height: 12;
+            sourceSize.width: 12;
+
             MouseArea {
                 anchors.fill: parent;
-                onClicked: searchBar.text = "";
+                onClicked: {
+                    searchBar.text = "";
+                }
             }
         }
     }

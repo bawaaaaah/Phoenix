@@ -8,46 +8,68 @@
 #include <QAudioOutput>
 #include <QDebug>
 
+#include <memory>
+
 #include "audiobuffer.h"
 #include "logging.h"
 
+#include "samplerate.h"
+
+/* The Audio class writes audio data to connected audio device.
+ * All of the audio functionality lives in side of this class.
+ * Any errors starting with "[phoenix.audio]" correspond to this class.
+ *
+ * The audio class is instantiated inside of the videoitem.cpp class.
+ * The Audio class uses the AudioBuffer class, which lives in the audiobuffer.cpp class, as a temporary audio buffer
+ * that can be written has a whole chunk to the audio output.
+ */
 
 class Audio : public QObject {
-    Q_OBJECT
-public:
-    Audio(QObject * = 0);
-    virtual ~Audio();
+        Q_OBJECT
+    public:
+        Audio( QObject * = 0 );
+        ~Audio();
 
-    void start();
-    void setFormat(QAudioFormat _afmt);
+        void setInFormat( QAudioFormat newInFormat );
 
-    AudioBuffer* abuf() const
-    {
-        return m_abuf;
-    }
+        AudioBuffer *getAudioBuf() const;
 
-signals:
-    void formatChanged();
+    signals:
+        void signalFormatChanged();
+        void signalStopTimer();
+        void signalStartTimer();
 
-public slots:
-    void stateChanged(QAudio::State s);
+    public slots:
+        void slotStateChanged( QAudio::State state );
+        void slotRunChanged( bool _isCoreRunning );
+        void slotSetVolume( qreal level );
+        void slotThreadStarted();
+        void slotHandleFormatChanged();
+        void slotHandlePeriodTimer();
 
-    void runChanged(bool isRunning);
-    void setVolume(qreal level);
+    private:
+        // Opaque pointer for libsamplerate
+        SRC_STATE *resamplerState;
 
-private slots:
-    void threadStarted();
-    void handleFormatChanged();
-    void handlePeriodTimer();
+        double sampleRateRatio;
+        int audioInBytesNeeded;
+        float inputDataFloat[4096 * 2];
+        char inputDataChar[4096 * 4];
+        float *outputDataFloat;
+        short *outputDataShort;
 
-private:
-    bool isRunning; // is core running
-    QAudioFormat afmt;
-    QAudioOutput *aout;
-    QIODevice *aio;
-    AudioBuffer *m_abuf;
-    QThread thread;
-    QTimer timer;
+        bool isCoreRunning;
+        QAudioFormat audioFormatOut;
+        QAudioFormat audioFormatIn;
+
+        // We delete aout; Use a normal pointer.
+        QAudioOutput *audioOut;
+
+        // aio doesn't own the pointer; Use a normal pointer.
+        QIODevice *audioOutIODev;
+
+        std::unique_ptr<AudioBuffer>audioBuf;
+
 };
 
 #endif
